@@ -150,8 +150,17 @@ async function handlePoll(s, m) {
 
 async function start() {
   const { state, saveCreds } = await useUpstashAuthState(UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN);
+
   let version;
-  try { ({ version } = await fetchLatestBaileysVersion()); } catch {}
+  try {
+    const withTimeout = Promise.race([
+      fetchLatestBaileysVersion(),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('version fetch timeout')), 8000)),
+    ]);
+    ({ version } = await withTimeout);
+  } catch (e) {
+    console.log('version fetch skipped:', e.message);
+  }
 
   let asked = false;
   const s = makeWASocket({
