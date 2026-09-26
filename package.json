@@ -7,7 +7,6 @@
   "engines": { "node": ">=20" },
   "dependencies": {
     "@whiskeysockets/baileys": "latest",
-    "mongodb": "^6.8.0",
     "pino": "^9.0.0"
   }
 }
