@@ -5,7 +5,7 @@ import makeWASocket, {
   Browsers, DisconnectReason, fetchLatestBaileysVersion, generateMessageID,
   jidNormalizedUser, normalizeMessageContent, proto,
 } from '@whiskeysockets/baileys';
-import { useUpstashAuthState } from './authState.js';
+import { useUpstashAuthState, wipeAuthState } from './authState.js';
 
 const {
   UPSTASH_REDIS_REST_URL,
@@ -33,7 +33,6 @@ const randMs = (a, b) => (a + Math.random() * (b - a)) * 1000;
 let status = 'starting';
 let pairingCode = null;
 
-// ---------- خادم HTTP (للـ Keep Alive وصفحة الربط) ----------
 http.createServer((req, res) => {
   const url = new URL(req.url, 'http://localhost');
   if (url.pathname === '/pair') {
@@ -54,7 +53,6 @@ http.createServer((req, res) => {
   res.end('ok');
 }).listen(PORT, () => console.log('HTTP on', PORT));
 
-// ---------- تشفير التصويت (عكس decryptPollVote في Baileys) ----------
 function encryptVote({ secret, pollId, creator, voter, options }) {
   const selectedOptions = options.map((o) =>
     createHash('sha256').update(Buffer.from(o)).digest()
@@ -73,10 +71,9 @@ function encryptVote({ secret, pollId, creator, voter, options }) {
   return { encPayload, encIv: iv };
 }
 
-// ---------- الاتصال ----------
 process.on('unhandledRejection', (e) => console.error('unhandled:', e));
 
-const cache = new Map(); // رسائل الاستفتاءات (تحتاجها المكتبة)
+const cache = new Map();
 const done = new Set();
 
 async function handlePoll(s, m) {
@@ -107,7 +104,7 @@ async function handlePoll(s, m) {
   if (!options.length) return;
 
   const wanted = Number(VOTE_LAST_N) || 2;
-  const maxAllowed = Number(poll.selectableOptionsCount || 0); // 0 = عدة اختيارات
+  const maxAllowed = Number(poll.selectableOptionsCount || 0);
   const n = maxAllowed > 0 ? Math.min(wanted, maxAllowed) : wanted;
   const chosen = options.slice(-n);
 
@@ -191,7 +188,8 @@ async function start() {
       const code = lastDisconnect?.error?.output?.statusCode;
       console.log('closed, code =', code);
       if (code === DisconnectReason.loggedOut) {
-        console.log('logged out: re-pairing required, restarting fresh');
+        await wipeAuthState(UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN);
+        console.log('logged out: session wiped, re-pairing fresh');
         return setTimeout(start, 5000);
       }
       const wait = code === DisconnectReason.connectionReplaced ? 60000 : 3000;
