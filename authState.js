@@ -1,13 +1,25 @@
 import { initAuthCreds, BufferJSON, proto } from '@whiskeysockets/baileys';
 
-export async function useMongoAuthState(col) {
+async function cmd(url, token, args) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(args),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data.result;
+}
+
+export async function useUpstashAuthState(url, token) {
+  const prefix = 'wabot:';
   const write = (data, id) =>
-    col.replaceOne({ _id: id }, { _id: id, v: JSON.stringify(data, BufferJSON.replacer) }, { upsert: true });
+    cmd(url, token, ['SET', prefix + id, JSON.stringify(data, BufferJSON.replacer)]);
   const read = async (id) => {
-    const d = await col.findOne({ _id: id });
-    return d ? JSON.parse(d.v, BufferJSON.reviver) : null;
+    const v = await cmd(url, token, ['GET', prefix + id]);
+    return v ? JSON.parse(v, BufferJSON.reviver) : null;
   };
-  const remove = (id) => col.deleteOne({ _id: id });
+  const remove = (id) => cmd(url, token, ['DEL', prefix + id]);
 
   const creds = (await read('creds')) || initAuthCreds();
 
