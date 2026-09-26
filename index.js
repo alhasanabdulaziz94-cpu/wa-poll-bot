@@ -40,7 +40,7 @@ http.createServer((req, res) => {
       res.writeHead(403);
       return res.end('forbidden');
     }
-    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
     return res.end(
       `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
        <meta http-equiv="refresh" content="8">
@@ -162,6 +162,10 @@ async function start() {
     markOnlineOnConnect: false,
     syncFullHistory: false,
     getMessage: async (key) => cache.get(key.id),
+    keepAliveIntervalMs: 15000,
+    connectTimeoutMs: 60000,
+    defaultQueryTimeoutMs: 60000,
+    retryRequestDelayMs: 2000,
   });
 
   s.ev.on('creds.update', saveCreds);
