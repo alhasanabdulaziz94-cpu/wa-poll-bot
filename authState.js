@@ -54,3 +54,7 @@ export async function useUpstashAuthState(url, token) {
     saveCreds: () => write(creds, 'creds'),
   };
 }
+
+export async function wipeAuthState(url, token) {
+  await cmd(url, token, ['FLUSHDB']);
+}
